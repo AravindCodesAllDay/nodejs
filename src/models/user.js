@@ -21,6 +21,9 @@ const userSchema = new Schema({
     },
     cart : {
         type : Array
+    },
+    wishlist : {
+        type : Array
     }
 })
 

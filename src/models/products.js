@@ -10,7 +10,6 @@ const productSchema = new mongoose.Schema({
   },
   photo: {
     type: String,
-    required: true,
   },
   description: {
     type: String,
@@ -32,6 +31,10 @@ const productSchema = new mongoose.Schema({
     type: Number,
     // required  : true
   },
+  bestseller: {
+    type: Boolean,
+    default: false // Default value is false
+  }
 });
 
 module.exports = mongoose.model("Products", productSchema);
