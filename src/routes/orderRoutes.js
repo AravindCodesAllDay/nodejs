@@ -4,6 +4,7 @@ const User = require("../models/user");
 const Products = require("../models/products");
 
 const router = express.Router();
+
 router.post("/:identifier", async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -12,15 +13,17 @@ router.post("/:identifier", async (req, res) => {
 
     const user = await User.findById(identifier);
     if (!user) {
+      console.log(user);
       return res.status(404).json({ message: "User not found" });
     }
+    console.log(user);
 
-    const addressIndex = user.address.findIndex(
-      (item) => item._id.toString() === addressId
-    );
-    if (addressIndex === -1) {
-      return res.status(404).json({ message: "Address not found" });
-    }
+    // const addressIndex = user.address.findIndex(
+    //   (item) => item._id.toString() === addressId
+    // );
+    // if (addressIndex === -1) {
+    //   return res.status(404).json({ message: "Address not found" });
+    // }
 
     const productsList = await Promise.all(
       products.map(async (item) => {
@@ -32,15 +35,11 @@ router.post("/:identifier", async (req, res) => {
       })
     );
 
-    // Fetch the address separately using its ID
-    const address = await Address.findById(addressId);
-    if (!address) {
-      return res.status(404).json({ message: "Address not found" });
-    }
+    console.log(addressId, products, paymentmethod, totalPrice);
 
     const newOrder = new Orders({
       userId: identifier,
-      address: address, // Pass the fetched address object
+      address: addressId,
       products: productsList,
       date: d.toDateString(),
       paymentmethod: paymentmethod,
@@ -49,9 +48,11 @@ router.post("/:identifier", async (req, res) => {
       totalPrice: totalPrice,
     });
 
+    console.log(newOrder);
+
     const order = await Orders.create(newOrder);
 
-    res.status(200).json(order);
+    return res.status(200).json(order);
   } catch (error) {
     console.error(error.message);
     return res.status(500).json({ message: "Internal Server Error" });

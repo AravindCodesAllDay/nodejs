@@ -19,6 +19,9 @@ const userSchema = new Schema({
   gender: {
     type: String,
   },
+  dob: {
+    type: String,
+  },
   cart: {
     type: Array,
   },
