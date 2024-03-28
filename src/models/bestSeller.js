@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const bestsellerSchema = new mongoose.Schema({
-  product: {
+  productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "products",
     required: true,

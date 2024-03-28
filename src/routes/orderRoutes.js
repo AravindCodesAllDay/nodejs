@@ -13,18 +13,14 @@ router.post("/:identifier", async (req, res) => {
 
     const user = await User.findById(identifier);
     if (!user) {
-      console.log(user);
       return res.status(404).json({ message: "User not found" });
     }
-    console.log(user);
 
-    // const addressIndex = user.address.findIndex(
-    //   (item) => item._id.toString() === addressId
-    // );
-    // if (addressIndex === -1) {
-    //   return res.status(404).json({ message: "Address not found" });
-    // }
+    // Remove items from cart array
+    user.cart = [];
+    await user.save();
 
+    // Fetch products
     const productsList = await Promise.all(
       products.map(async (item) => {
         const product = await Products.findById(item);
@@ -35,8 +31,7 @@ router.post("/:identifier", async (req, res) => {
       })
     );
 
-    console.log(addressId, products, paymentmethod, totalPrice);
-
+    // Create new order
     const newOrder = new Orders({
       userId: identifier,
       address: addressId,
@@ -47,8 +42,6 @@ router.post("/:identifier", async (req, res) => {
       delivered: false,
       totalPrice: totalPrice,
     });
-
-    console.log(newOrder);
 
     const order = await Orders.create(newOrder);
 

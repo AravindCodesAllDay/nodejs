@@ -1,23 +1,34 @@
 const express = require("express");
-// import BestSeller from "../models/bestSeller";
 const BestSeller = require("../models/bestSeller");
+const Products = require("../models/products");
 
 const router = express.Router();
 
 router.post("/:productId", async (req, res) => {
   const productId = req.params.productId;
+  const tag = req.body.tag; // Assuming tag is sent in the request body
   try {
     const product = await Products.findById(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Update the product's bestseller status
-    product.bestseller = !product.bestseller; // Toggle the bestseller status
-
-    await product.save();
-
-    res.status(204).end();
+    // Check if the product is already a bestseller
+    const existingBestSeller = await BestSeller.findOne({ productId });
+    if (existingBestSeller) {
+      // If the product is already a bestseller, update the tags
+      existingBestSeller.tag = tag;
+      await existingBestSeller.save();
+      return res.status(200).json(existingBestSeller);
+    } else {
+      // If the product is not a bestseller, create a new entry
+      const newBestSeller = new BestSeller({
+        productId: productId,
+        tag: tag,
+      });
+      const bestSeller = await newBestSeller.save();
+      return res.status(200).json(bestSeller);
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -25,12 +36,7 @@ router.post("/:productId", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const bestsellers = await Products.find({ bestseller: true });
-
-    if (bestsellers.length === 0) {
-      return res.json([]); // Return an empty array if there are no bestsellers
-    }
-
+    const bestsellers = await BestSeller.find();
     res.json(bestsellers);
   } catch (err) {
     res.status(500).json({ message: err.message });
