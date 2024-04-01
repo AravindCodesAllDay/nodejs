@@ -11,14 +11,13 @@ router.post("/:identifier", async (req, res) => {
     const { addressId, products, paymentmethod, totalPrice } = req.body;
     const d = new Date();
 
-    const user = await User.findById(identifier);
+    let user = await User.findById(identifier);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Remove items from cart array
     user.cart = [];
-    await user.save();
 
     // Fetch products
     const productsList = await Promise.all(
@@ -43,9 +42,14 @@ router.post("/:identifier", async (req, res) => {
       totalPrice: totalPrice,
     });
 
-    const order = await Orders.create(newOrder);
+    // Add new order to the user's orders array
+    user.orders.push(newOrder);
 
-    return res.status(200).json(order);
+    // Save the user and the order
+    await newOrder.save();
+    await user.save();
+
+    return res.status(200).json(newOrder);
   } catch (error) {
     console.error(error.message);
     return res.status(500).json({ message: "Internal Server Error" });

@@ -1,34 +1,115 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const Admin = require("../models/admin");
 
 const jwt = require("jsonwebtoken");
+const admin = require("../models/admin");
 
 const router = express.Router();
 
-// Mock admin credentials
-const adminCredentials = {
-  username: "admin",
-  password: "$2b$10$qqb6qhJ0fJRrvjtbYFgoruIs/JDatcamvoifU5Qn.WSUhqDF/vSMG", // Hashed password: admin@123
-};
+router.post("/", async (req, res) => {
+  try {
+    const { name, pswd } = req.body;
+    if (!name || !pswd) {
+      return res.status(400).json({
+        message: "All required fields must be provided.",
+      });
+    }
 
-// router.get("/:secretKey", async (req, res) => {
-//   try {
-//     const { secretKey } = req.params;
-//     const token = jwt.sign({ userId: 123 }, secretKey, { expiresIn: "1h" });
-//     console.log(token);
-//     return res.status(200).send({ token: token });
-//   } catch (error) {
-//     console.err;
-//     return res.status(500).send("Internal Eerver Error");
-//   }
-// });
+    const hashedPassword = await bcrypt.hash(pswd, 10);
+
+    const newAdmin = {
+      name: name,
+      pswd: hashedPassword,
+    };
+    const admin = await Admin.create(newAdmin);
+    return res.status(200).json(admin);
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    let admin = await Admin.findOne({ name: "admin" });
+    return res.status(200).json({ subusers: admin.subusers });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+router.put("/addsubadmin", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        message: "All required fields must be provided.",
+      });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: "Invalid email format.",
+      });
+    }
+    let admin = await Admin.findOne({ name: "admin" });
+
+    if (admin.subusers.includes(email)) {
+      return res.status(400).json({
+        message: "Email is already present in sub-users list.",
+      });
+    }
+
+    admin.subusers.push(email);
+    await admin.save();
+    return res.status(200).send("subadmin added");
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+router.put("/removesubadmin", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        message: "Email must be provided.",
+      });
+    }
+
+    const admin = await Admin.findOne({ name: "admin" });
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found.",
+      });
+    }
+
+    if (!admin.subusers.includes(email)) {
+      return res.status(400).json({
+        message: "Email not found in sub-users list.",
+      });
+    }
+
+    admin.subusers = admin.subusers.filter((subuser) => subuser !== email);
+    await admin.save();
+
+    return res.status(200).json({
+      message: "Sub-admin removed successfully.",
+    });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 router.get("/verify/:token", async (req, res) => {
   try {
     const { token } = req.params;
     const decodedToken = jwt.verify(token, process.env.SECRET_KEY); // Using the secretKey from environment variables
-    console.log(decodedToken);
     const userId = decodedToken.username;
 
     if (userId == "admin") {
@@ -48,35 +129,14 @@ router.get("/verify/:token", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/logintoken", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    console.log(hashedPassword);
-    console.log(await bcrypt.compare(password, adminCredentials.password));
-    // Check if username and password are provided
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ message: "Username and password are required" });
-    }
-
-    // Check if the provided username exists and passwords match
-    if (
-      username === adminCredentials.username &&
-      (await bcrypt.compare(password, adminCredentials.password))
-    ) {
-      // Generate JWT token
-      const token = jwt.sign(
-        { username: adminCredentials.username },
-        process.env.SECRET_KEY,
-        { expiresIn: "1h" }
-      );
-
-      return res.status(200).json({ token });
-    } else {
-      return res.status(401).json({ message: "Invalid username or password" });
-    }
+    // Generate JWT token
+    const token = jwt.sign({ username: "admin" }, process.env.SECRET_KEY, {
+      expiresIn: "1h",
+    });
+    console.log("Token Generated");
+    return res.status(200).json({ token });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal Server Error" });
