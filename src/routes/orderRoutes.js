@@ -16,20 +16,18 @@ router.post("/:identifier", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Remove items from cart array
-    user.cart = [];
-
     // Fetch products
     const productsList = await Promise.all(
       products.map(async (item) => {
-        const product = await Products.findById(item);
+        const product = await Products.findById(item.id);
         if (!product) {
-          throw new Error(`Product with ID ${item} not found`);
+          throw new Error(`Product with ID ${item.id} not found`);
         }
-        return product;
+        return { ...product, quantity: item.quantity };
       })
     );
 
+    user.cart = [];
     // Create new order
     const newOrder = new Orders({
       userId: identifier,
@@ -41,7 +39,7 @@ router.post("/:identifier", async (req, res) => {
       delivered: false,
       totalPrice: totalPrice,
     });
-
+    console.log(newOrder);
     // Add new order to the user's orders array
     user.orders.push(newOrder);
 
