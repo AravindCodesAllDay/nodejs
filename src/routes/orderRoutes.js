@@ -1,7 +1,6 @@
 const express = require("express");
 const Orders = require("../models/orders");
 const User = require("../models/user");
-const Products = require("../models/products");
 
 const router = express.Router();
 
@@ -16,23 +15,12 @@ router.post("/:identifier", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Fetch products
-    const productsList = await Promise.all(
-      products.map(async (item) => {
-        const product = await Products.findById(item.id);
-        if (!product) {
-          throw new Error(`Product with ID ${item.id} not found`);
-        }
-        return { ...product, quantity: item.quantity };
-      })
-    );
-
     user.cart = [];
     // Create new order
     const newOrder = new Orders({
       userId: identifier,
       address: addressId,
-      products: productsList,
+      products: products,
       date: d.toDateString(),
       paymentmethod: paymentmethod,
       paymentDone: "pending",

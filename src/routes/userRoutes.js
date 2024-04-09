@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const User = require("../models/user");
+const Products = require("../models/products");
 const Cart = require("../models/cart");
 const Wishlist = require("../models/wishlist");
 const nodemailer = require("nodemailer");
@@ -135,22 +136,23 @@ router.post("/cart", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const existingCartItemIndex = user.cart.findIndex(
-      (item) => item.product === product
-    );
-
-    if (existingCartItemIndex !== -1) {
-      const existingCartItem = user.cart[existingCartItemIndex];
-      existingCartItem.quantity += 1;
-      user.cart.splice(existingCartItemIndex, 1);
-      user.cart.push(existingCartItem);
-    } else {
-      const cartItem = new Cart({ product });
-      user.cart.push(cartItem);
+    const productData = await Products.findById(product);
+    if (!productData) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    await user.save();
+    // Extract necessary fields for the cart item
+    const cartItem = {
+      _id: productData._id,
+      name: productData.name,
+      price: productData.price,
+      photo: productData.photo,
+      stock: productData.stock,
+      quantity: 1,
+    };
 
+    user.cart.push(cartItem);
+    await user.save();
     return res
       .status(200)
       .json({ message: "Product added to cart successfully" });
@@ -193,6 +195,50 @@ router.delete("/cart", async (req, res) => {
   }
 });
 
+router.post("/cartquantity", async (req, res) => {
+  try {
+    const { userId, product, sign } = req.body;
+    if (!userId || !product || !sign || (sign !== "+" && sign !== "-")) {
+      return res.status(400).json({ message: "Invalid request" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const reqProductIndex = user.cart.findIndex(
+      (item) => item.product.toString() === product
+    );
+
+    if (reqProductIndex === -1) {
+      return res.status(404).json({ error: "Product not found in cart" });
+    }
+
+    if (sign === "-") {
+      if (user.cart[reqProductIndex].quantity > 1) {
+        user.cart[reqProductIndex].quantity -= 1;
+      } else {
+        return res
+          .status(400)
+          .json({ error: "Quantity cannot be less than 1" });
+      }
+    } else if (sign === "+") {
+      user.cart[reqProductIndex].quantity += 1;
+    }
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Cart quantity updated successfully" });
+  } catch (error) {
+    console.error("Error updating cart quantity:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.put("/cart/:identifier", async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -201,10 +247,15 @@ router.put("/cart/:identifier", async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not Found" });
     }
-    const emptyCart = [];
-    user.cart = emptyCart;
+
+    user.cart = []; // Clear the cart
     await user.save();
-  } catch (error) {}
+
+    return res.status(200).json({ message: "Cart cleared successfully" });
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.post("/wishlist", async (req, res) => {
