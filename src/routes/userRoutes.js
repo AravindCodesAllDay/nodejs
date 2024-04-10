@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const User = require("../models/user");
 const Products = require("../models/products");
-const Cart = require("../models/cart");
 const Wishlist = require("../models/wishlist");
 const nodemailer = require("nodemailer");
 const otpGenerator = require("otp-generator");
@@ -141,7 +140,6 @@ router.post("/cart", async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Extract necessary fields for the cart item
     const cartItem = {
       _id: productData._id,
       name: productData.name,
@@ -164,9 +162,9 @@ router.post("/cart", async (req, res) => {
 
 router.delete("/cart", async (req, res) => {
   try {
-    const { userId, product } = req.body;
+    const { userId, productId } = req.body;
 
-    if (!userId || !product) {
+    if (!userId || !productId) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -177,7 +175,7 @@ router.delete("/cart", async (req, res) => {
     }
 
     const existingCartItemIndex = user.cart.findIndex(
-      (item) => item.product === product
+      (item) => item._id.toString() === productId
     );
 
     if (existingCartItemIndex !== -1) {
@@ -195,10 +193,10 @@ router.delete("/cart", async (req, res) => {
   }
 });
 
-router.post("/cartquantity", async (req, res) => {
+router.put("/cartquantity", async (req, res) => {
   try {
-    const { userId, product, sign } = req.body;
-    if (!userId || !product || !sign || (sign !== "+" && sign !== "-")) {
+    const { userId, productId, sign } = req.body;
+    if (!userId || !productId || !sign || (sign !== "+" && sign !== "-")) {
       return res.status(400).json({ message: "Invalid request" });
     }
 
@@ -208,25 +206,22 @@ router.post("/cartquantity", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const reqProductIndex = user.cart.findIndex(
-      (item) => item.product.toString() === product
-    );
-
-    if (reqProductIndex === -1) {
-      return res.status(404).json({ error: "Product not found in cart" });
-    }
-
-    if (sign === "-") {
-      if (user.cart[reqProductIndex].quantity > 1) {
-        user.cart[reqProductIndex].quantity -= 1;
-      } else {
-        return res
-          .status(400)
-          .json({ error: "Quantity cannot be less than 1" });
+    user.cart = user.cart.map((item) => {
+      if (item._id.toString() === productId) {
+        if (sign === "-") {
+          if (item.quantity > 1) {
+            item.quantity -= 1;
+          } else {
+            return res
+              .status(400)
+              .json({ error: "Quantity cannot be less than 1" });
+          }
+        } else if (sign === "+") {
+          item.quantity += 1;
+        }
       }
-    } else if (sign === "+") {
-      user.cart[reqProductIndex].quantity += 1;
-    }
+      return item; // Add this line to return the updated item
+    });
 
     await user.save();
 
