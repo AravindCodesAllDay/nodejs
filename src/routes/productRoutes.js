@@ -13,16 +13,16 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage }).single("photo");
+const upload = multer({ storage: storage });
 
-router.post("/", (req, res) => {
-  upload(req, res, async (err) => {
+router.post(
+  "/",
+  upload.fields([
+    { name: "coverImage", maxCount: 1 },
+    { name: "images", maxCount: 5 },
+  ]),
+  async (req, res) => {
     try {
-      if (err) {
-        console.error(err.message);
-        return res.status(500).send("File upload error");
-      }
-
       const { name, price, description, rating, numOfRating } = req.body;
 
       if (
@@ -36,26 +36,32 @@ router.post("/", (req, res) => {
         return res.status(400).send("Missing required fields");
       }
 
-      const image = req.file.filename;
+      let images = [];
+      console.log(req.files["images"]);
 
+      const coverImage = req.files["coverImage"][0].filename;
+      images = req.files["images"].map((file) => file.filename);
+
+      // Create a new product object
       const newProduct = new Products({
-        name: name,
-        price: price,
-        photo: image,
-        rating: rating,
-        numOfRating: numOfRating,
-        description: description,
-        stock: true,
+        name,
+        price,
+        description,
+        rating,
+        numOfRating,
+        photo: coverImage,
+        moreImg: images,
       });
 
-      const product = await Products.create(newProduct);
-      return res.status(200).send(product);
-    } catch (error) {
-      console.error(error.message);
-      return res.status(500).send("Internal Server Error...!!");
+      const product = await newProduct.save();
+
+      res.status(201).json(product);
+    } catch (err) {
+      console.error("Error uploading images:", err.message);
+      res.status(500).json({ error: "Error uploading images" });
     }
-  });
-});
+  }
+);
 
 router.post("/test", async (req, res) => {
   try {
