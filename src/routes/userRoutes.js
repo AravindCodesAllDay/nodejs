@@ -193,7 +193,7 @@ router.delete("/cart", async (req, res) => {
   }
 });
 
-router.put("/cartquantity", async (req, res) => {
+router.post("/cartquantity", async (req, res) => {
   try {
     const { userId, productId, sign } = req.body;
     if (!userId || !productId || !sign || (sign !== "+" && sign !== "-")) {
@@ -206,22 +206,28 @@ router.put("/cartquantity", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    user.cart = user.cart.map((item) => {
-      if (item._id.toString() === productId) {
-        if (sign === "-") {
-          if (item.quantity > 1) {
-            item.quantity -= 1;
-          } else {
-            return res
-              .status(400)
-              .json({ error: "Quantity cannot be less than 1" });
-          }
-        } else if (sign === "+") {
-          item.quantity += 1;
+    const existingCartIndex = user.cart.findIndex(
+      (item) => item._id.toString() === productId
+    );
+    if (existingCartIndex !== -1) {
+      const existingCartItem = user.cart[existingCartIndex];
+      if (sign === "-") {
+        if (existingCartItem.quantity > 1) {
+          existingCartItem.quantity -= 1;
+          user.cart.splice(existingCartIndex, 1);
+          user.cart.push(existingCartItem);
+        } else {
+          return res
+            .status(401)
+            .json({ message: "Cart quantity cannot be zero...!" });
         }
+      } else {
+        console.log(existingCartItem);
+        existingCartItem.quantity += 1;
+        user.cart.splice(existingCartIndex, 1);
+        user.cart.push(existingCartItem);
       }
-      return item; // Add this line to return the updated item
-    });
+    }
 
     await user.save();
 
@@ -296,27 +302,25 @@ router.post("/wishlist", async (req, res) => {
 router.delete("/wishlist", async (req, res) => {
   try {
     const { userId, product } = req.body;
-
+    console.log(product);
     if (!userId || !product) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
     const existingWishlistItemIndex = user.wishlist.findIndex(
-      (item) => item.product === product
+      (item) => item.product.toString() === product
     );
 
     if (existingWishlistItemIndex !== -1) {
       user.wishlist.splice(existingWishlistItemIndex, 1);
     }
-
+    console.log(user.wishlist);
     await user.save();
-
     return res
       .status(200)
       .json({ message: "Product deleted from wishlist successfully" });

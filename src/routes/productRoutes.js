@@ -1,5 +1,6 @@
 const express = require("express");
 const Products = require("../models/products");
+const Test = require("../models/test");
 const multer = require("multer");
 
 const router = express.Router();
@@ -65,30 +66,33 @@ router.post(
 
 router.post("/test", async (req, res) => {
   try {
-    const { name, price, description, rating, image, numOfRating, stock } =
-      req.body;
+    const {
+      name,
+      price,
+      description,
+      rating,
+      numOfRating,
+      coverImage,
+      images,
+    } = req.body;
 
-    if (
-      !name ||
-      !price ||
-      !description ||
-      !stock ||
-      !price ||
-      !image ||
-      !rating ||
-      !numOfRating
-    ) {
-      return res.status(400).send("Missing required fields");
-    }
-
+    console.log(
+      name,
+      price,
+      description,
+      rating,
+      numOfRating,
+      coverImage,
+      images
+    );
     const newProduct = new Products({
       name: name,
       price: price,
-      photo: image,
+      photo: coverImage,
+      moreImg: images,
       description: description,
       rating: rating,
       numOfRating: numOfRating,
-      stock: stock,
     });
 
     const product = await Products.create(newProduct);
