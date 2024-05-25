@@ -1,14 +1,19 @@
 const mongoose = require("mongoose");
 
-const carouselSchema = new mongoose.Schema({
-  photo: {
-    type: String,
-    required: true,
+const carouselSchema = new mongoose.Schema(
+  {
+    laptopPhotos: {
+      type: Array,
+      required: true,
+    },
+    mobilePhotos: {
+      type: Array,
+      required: true,
+    },
   },
-  mobile: {
-    type: Boolean,
-    required: true,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
 module.exports = mongoose.model("Carousel", carouselSchema);
