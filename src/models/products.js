@@ -7,12 +7,19 @@ const productSchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
+    required: true,
+  },
+  numOfRating: {
+    type: Number,
+    required: true,
   },
   photo: {
     type: String,
+    required: true,
   },
-  moreImg: {
+  otherPhotos: {
     type: Array,
+    default: [],
   },
   description: {
     type: String,
@@ -22,15 +29,9 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  categories: {
-    type: Array,
-  },
   stock: {
     type: Boolean,
     default: true,
-  },
-  offerPrice: {
-    type: Number,
   },
 });
 

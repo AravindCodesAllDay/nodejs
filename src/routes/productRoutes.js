@@ -4,101 +4,48 @@ const multer = require("multer");
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  },
-});
+const upload = multer({
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+}).fields([
+  { name: "photo", maxCount: 1 },
+  { name: "otherPhotos", maxCount: 10 },
+]);
 
-const upload = multer({ storage: storage });
-
-router.post(
-  "/",
-  upload.fields([
-    { name: "coverImage", maxCount: 1 },
-    { name: "images", maxCount: 5 },
-  ]),
-  async (req, res) => {
-    try {
-      const { name, price, description, rating, numOfRating } = req.body;
-
-      if (
-        !name ||
-        !price ||
-        !description ||
-        !price ||
-        !rating ||
-        !numOfRating
-      ) {
-        return res.status(400).send("Missing required fields");
-      }
-
-      let images = [];
-      console.log(req.files["images"]);
-
-      const coverImage = req.files["coverImage"][0].filename;
-      images = req.files["images"].map((file) => file.filename);
-
-      // Create a new product object
-      const newProduct = new Products({
-        name,
-        price,
-        description,
-        rating,
-        numOfRating,
-        photo: coverImage,
-        moreImg: images,
-      });
-
-      const product = await newProduct.save();
-
-      res.status(201).json(product);
-    } catch (err) {
-      console.error("Error uploading images:", err.message);
-      res.status(500).json({ error: "Error uploading images" });
-    }
-  }
-);
-
-router.post("/test", async (req, res) => {
+router.post("/", upload, async (req, res) => {
   try {
-    const {
-      name,
-      price,
-      description,
-      rating,
-      numOfRating,
-      coverImage,
-      images,
-    } = req.body;
+    const { name, price, description, rating, numOfRating } = req.body;
 
-    console.log(
+    const photo = req.files["photo"]?.[0]?.buffer.toString("base64");
+    const otherPhotos =
+      req.files["otherPhotos"]?.map((file) => file.buffer.toString("base64")) ||
+      [];
+
+    if (!name || !price || !description || !rating || !numOfRating || !photo) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (isNaN(price) || isNaN(rating) || isNaN(numOfRating)) {
+      return res
+        .status(400)
+        .json({ error: "Price, rating, and numOfRating must be numbers" });
+    }
+
+    const newProduct = new Products({
       name,
-      price,
-      description,
       rating,
       numOfRating,
-      coverImage,
-      images
-    );
-    const newProduct = new Products({
-      name: name,
-      price: price,
-      photo: coverImage,
-      moreImg: images,
-      description: description,
-      rating: rating,
-      numOfRating: numOfRating,
+      price,
+      photo,
+      otherPhotos,
+      description,
     });
 
-    const product = await Products.create(newProduct);
-    return res.status(200).send(product);
-  } catch (error) {
-    console.error(error.message);
-    return res.status(500).send("Internal Server Error...!!");
+    const product = await newProduct.save();
+
+    res.status(201).json(product);
+  } catch (err) {
+    console.error("Error uploading product:", err.message);
+    res.status(500).json({ error: "Error uploading product" });
   }
 });
 
@@ -131,7 +78,6 @@ router.get("/:_id", async (req, res) => {
 router.put("/:_id", async (req, res) => {
   const { _id } = req.params;
   const { name, price, description, stock } = req.body;
-  console.log(req.body);
 
   try {
     if (!name || !price || !description || !stock) {
@@ -145,13 +91,15 @@ router.put("/:_id", async (req, res) => {
     }
 
     const update = {
-      name: name,
-      price: price,
-      description: description,
-      stock: stock,
+      name,
+      price,
+      description,
+      stock,
     };
 
-    const updatedProduct = await Products.findByIdAndUpdate(_id, update);
+    const updatedProduct = await Products.findByIdAndUpdate(_id, update, {
+      new: true,
+    });
 
     return res.status(200).json({ message: "Product updated", updatedProduct });
   } catch (error) {
